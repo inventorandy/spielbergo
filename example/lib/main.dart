@@ -22,6 +22,7 @@ class _MyAppState extends State<MyApp> {
     setState(() => _isPicking = true);
     final videoFile = await SpielbergoVideoEditor().pickVideo(
       recordTimes: ['10m', '1m', '30s', '15s'],
+      defaultRecordTime: '1m',
     );
     if (!mounted) return;
     setState(() {

@@ -14,6 +14,7 @@ void main() {
           if (methodCall.method == 'pickVideo') {
             expect(methodCall.arguments, {
               'recordTimes': ['15s', '30s'],
+              'defaultRecordTime': '30s',
             });
             return '/tmp/spielbergo.mp4';
           }
@@ -32,7 +33,10 @@ void main() {
 
   test('pickVideo', () async {
     expect(
-      await platform.pickVideo(recordTimes: ['15s', '30s']),
+      await platform.pickVideo(
+        recordTimes: ['15s', '30s'],
+        defaultRecordTime: '30s',
+      ),
       '/tmp/spielbergo.mp4',
     );
   });

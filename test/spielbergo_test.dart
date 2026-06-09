@@ -11,8 +11,10 @@ class MockSpielbergoPlatform
   Future<String?> getPlatformVersion() => Future.value('42');
 
   @override
-  Future<String?> pickVideo({required List<String> recordTimes}) =>
-      Future.value('/tmp/spielbergo.mp4');
+  Future<String?> pickVideo({
+    required List<String> recordTimes,
+    String? defaultRecordTime,
+  }) => Future.value('/tmp/spielbergo.mp4');
 }
 
 void main() {
@@ -35,7 +37,10 @@ void main() {
     MockSpielbergoPlatform fakePlatform = MockSpielbergoPlatform();
     SpielbergoPlatform.instance = fakePlatform;
 
-    final file = await editor.pickVideo(recordTimes: ['15s']);
+    final file = await editor.pickVideo(
+      recordTimes: ['15s', '30s'],
+      defaultRecordTime: '30s',
+    );
 
     expect(file?.path, '/tmp/spielbergo.mp4');
   });

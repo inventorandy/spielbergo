@@ -18,10 +18,18 @@ class MethodChannelSpielbergo extends SpielbergoPlatform {
   }
 
   @override
-  Future<String?> pickVideo({required List<String> recordTimes}) async {
-    final path = await methodChannel.invokeMethod<String>('pickVideo', {
+  Future<String?> pickVideo({
+    required List<String> recordTimes,
+    String? defaultRecordTime,
+  }) async {
+    final arguments = <String, Object?>{
       'recordTimes': recordTimes,
-    });
+      'defaultRecordTime': ?defaultRecordTime,
+    };
+    final path = await methodChannel.invokeMethod<String>(
+      'pickVideo',
+      arguments,
+    );
     return path;
   }
 }

@@ -6,6 +6,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
   var onComplete: ((String?) -> Void)?
 
   private let recordTimes: [String]
+  private let selectedRecordTime: String
   private let session = AVCaptureSession()
   private let movieOutput = AVCaptureMovieFileOutput()
   private var previewLayer: AVCaptureVideoPreviewLayer?
@@ -35,9 +36,13 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
   private let frontLightView = UIView()
   private let playerView = UIView()
 
-  init(recordTimes: [String]) {
-    self.recordTimes = recordTimes.isEmpty ? ["15s"] : recordTimes
-    self.maxDuration = SpielbergoVideoEditorViewController.parseDuration(recordTimes.first ?? "15s")
+  init(recordTimes: [String], defaultRecordTime: String?) {
+    let availableRecordTimes = recordTimes.isEmpty ? ["15s"] : recordTimes
+    let selectedRecordTime =
+      defaultRecordTime.flatMap { availableRecordTimes.contains($0) ? $0 : nil } ?? availableRecordTimes[0]
+    self.recordTimes = availableRecordTimes
+    self.selectedRecordTime = selectedRecordTime
+    self.maxDuration = SpielbergoVideoEditorViewController.parseDuration(selectedRecordTime)
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -89,12 +94,12 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     frontLightView.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(frontLightView)
 
-    configureIcon(closeButton, title: "×", size: 40)
-    configureIcon(switchButton, title: "⇄", size: 24)
-    configureIcon(flashButton, title: "ϟ", size: 30)
-    configureIcon(deleteButton, title: "⌫", size: 24)
-    configureIcon(doneButton, title: "✓", size: 30)
-    configureIcon(backButton, title: "‹", size: 48)
+    configureIcon(closeButton, imageName: "close")
+    configureIcon(switchButton, imageName: "switch-camera")
+    configureIcon(flashButton, imageName: "no-flash")
+    configureIcon(deleteButton, imageName: "delete-clip")
+    configureIcon(doneButton, imageName: "checkmark-circle")
+    configureIcon(backButton, imageName: "chevron-left")
     closeButton.addTarget(self, action: #selector(confirmExit), for: .touchUpInside)
     switchButton.addTarget(self, action: #selector(switchCamera), for: .touchUpInside)
     flashButton.addTarget(self, action: #selector(toggleLight), for: .touchUpInside)
@@ -115,9 +120,10 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     recordTimes.enumerated().forEach { index, label in
       let button = UIButton(type: .system)
       button.setTitle(label, for: .normal)
-      button.setTitleColor(.white.withAlphaComponent(index == 0 ? 1 : 0.8), for: .normal)
       button.titleLabel?.font = .boldSystemFont(ofSize: 14)
+      button.contentEdgeInsets = UIEdgeInsets(top: 4, left: 12, bottom: 4, right: 12)
       button.tag = index
+      styleDurationButton(button, selected: label == selectedRecordTime || (index == 0 && selectedRecordTime.isEmpty))
       button.addTarget(self, action: #selector(selectDuration(_:)), for: .touchUpInside)
       durationStack.addArrangedSubview(button)
     }
@@ -161,13 +167,13 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       frontLightView.topAnchor.constraint(equalTo: view.topAnchor),
       frontLightView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-      closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 18),
-      closeButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 18),
+      closeButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
+      closeButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
       closeButton.widthAnchor.constraint(equalToConstant: 48),
       closeButton.heightAnchor.constraint(equalToConstant: 48),
 
-      switchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -22),
-      switchButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 22),
+      switchButton.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -12),
+      switchButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
       switchButton.widthAnchor.constraint(equalToConstant: 44),
       switchButton.heightAnchor.constraint(equalToConstant: 44),
 
@@ -197,8 +203,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       doneButton.widthAnchor.constraint(equalToConstant: 48),
       doneButton.heightAnchor.constraint(equalToConstant: 48),
 
-      backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 18),
-      backButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 18),
+      backButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
+      backButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
       backButton.widthAnchor.constraint(equalToConstant: 48),
       backButton.heightAnchor.constraint(equalToConstant: 48),
 
@@ -327,20 +333,31 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     guard recordTimes.indices.contains(sender.tag) else { return }
     maxDuration = Self.parseDuration(recordTimes[sender.tag])
     durationStack.arrangedSubviews.enumerated().forEach { index, view in
-      (view as? UIButton)?.setTitleColor(.white.withAlphaComponent(index == sender.tag ? 1 : 0.8), for: .normal)
+      if let button = view as? UIButton {
+        styleDurationButton(button, selected: index == sender.tag)
+      }
     }
     updateCountdown(remainingDuration())
+  }
+
+  private func styleDurationButton(_ button: UIButton, selected: Bool) {
+    button.setTitleColor(selected ? .black : .white, for: .normal)
+    button.backgroundColor = selected ? .white : .clear
+    button.layer.cornerRadius = 10
+    button.layer.masksToBounds = true
   }
 
   @objc private func switchCamera() {
     currentCameraPosition = currentCameraPosition == .front ? .back : .front
     frontLightView.isHidden = true
+    setFlashIcon(enabled: false)
     configureSession()
   }
 
   @objc private func toggleLight() {
     guard currentCameraPosition == .back else {
       frontLightView.isHidden.toggle()
+      setFlashIcon(enabled: !frontLightView.isHidden)
       return
     }
     guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
@@ -348,7 +365,13 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     else { return }
     try? device.lockForConfiguration()
     device.torchMode = device.torchMode == .on ? .off : .on
+    setFlashIcon(enabled: device.torchMode == .on)
     device.unlockForConfiguration()
+  }
+
+  private func setFlashIcon(enabled: Bool) {
+    let image = loadIcon(named: enabled ? "flash" : "no-flash")?.withRenderingMode(.alwaysOriginal)
+    flashButton.setImage(image, for: .normal)
   }
 
   @objc private func showEditor() {
@@ -536,12 +559,22 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     countdownLabel.text = String(format: "%02d:%02d", seconds / 60, seconds % 60)
   }
 
-  private func configureIcon(_ button: UIButton, title: String, size: CGFloat) {
-    button.setTitle(title, for: .normal)
-    button.setTitleColor(.white, for: .normal)
-    button.titleLabel?.font = .boldSystemFont(ofSize: size)
-    button.titleLabel?.shadowColor = UIColor.black.withAlphaComponent(0.35)
-    button.titleLabel?.shadowOffset = CGSize(width: 0, height: 1)
+  private func configureIcon(_ button: UIButton, imageName: String) {
+    let image = loadIcon(named: imageName)?.withRenderingMode(.alwaysOriginal)
+    button.setImage(image, for: .normal)
+    button.backgroundColor = .clear
+    button.imageView?.contentMode = .scaleAspectFit
+    button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+  }
+
+  private func loadIcon(named name: String) -> UIImage? {
+    #if SWIFT_PACKAGE
+    let bundle = Bundle.module
+    #else
+    let bundle = Bundle(for: SpielbergoVideoEditorViewController.self)
+    #endif
+    return UIImage(named: name, in: bundle, compatibleWith: nil)
+      ?? UIImage(contentsOfFile: bundle.path(forResource: name, ofType: "png") ?? "")
   }
 
   private func previewPlayerLayer() -> AVPlayerLayer? {

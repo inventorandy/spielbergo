@@ -19,6 +19,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.VideoView
@@ -48,6 +50,7 @@ import kotlin.math.min
 class SpielbergoVideoEditorActivity : AppCompatActivity() {
     companion object {
         const val extraRecordTimes = "spielbergo.recordTimes"
+        const val extraDefaultRecordTime = "spielbergo.defaultRecordTime"
         const val extraVideoPath = "spielbergo.videoPath"
         private const val permissionRequestCode = 4105
     }
@@ -68,17 +71,18 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     private var maxDurationMs = 15_000L
     private var frontLightEnabled = false
     private lateinit var root: FrameLayout
+    private lateinit var previewOverlay: FrameLayout
     private lateinit var previewView: PreviewView
     private lateinit var videoView: VideoView
-    private lateinit var closeButton: TextView
-    private lateinit var switchButton: TextView
-    private lateinit var flashButton: TextView
+    private lateinit var closeButton: ImageButton
+    private lateinit var switchButton: ImageButton
+    private lateinit var flashButton: ImageButton
     private lateinit var durationRow: LinearLayout
     private lateinit var recordButton: RecordButton
     private lateinit var countdownText: TextView
-    private lateinit var deleteButton: TextView
-    private lateinit var doneButton: TextView
-    private lateinit var backButton: TextView
+    private lateinit var deleteButton: ImageButton
+    private lateinit var doneButton: ImageButton
+    private lateinit var backButton: ImageButton
     private lateinit var nextButton: TextView
     private lateinit var frontLight: View
     private var previewClipIndex = 0
@@ -88,10 +92,15 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
         val durations = intent.getStringArrayListExtra(extraRecordTimes).orEmpty()
-        maxDurationMs = durations.firstOrNull()?.let(::parseDurationMs) ?: 15_000L
-        buildUi(durations.ifEmpty { listOf("15s") })
+        val availableDurations = durations.ifEmpty { listOf("15s") }
+        val defaultRecordTime = intent.getStringExtra(extraDefaultRecordTime)
+        val selectedRecordTime =
+            if (defaultRecordTime != null && availableDurations.contains(defaultRecordTime)) defaultRecordTime
+            else availableDurations.first()
+        maxDurationMs = parseDurationMs(selectedRecordTime)
+        buildUi(availableDurations, selectedRecordTime)
         if (hasPermissions()) {
-            bindCamera()
+            previewView.post { bindCamera() }
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -115,7 +124,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == permissionRequestCode && hasPermissions()) {
-            bindCamera()
+            previewView.post { bindCamera() }
         } else {
             finishCancelled()
         }
@@ -125,7 +134,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    private fun buildUi(durations: List<String>) {
+    private fun buildUi(durations: List<String>, selectedRecordTime: String) {
         root = FrameLayout(this).also {
             it.setBackgroundColor(Color.BLACK)
             setContentView(it)
@@ -158,14 +167,17 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         }
         root.addView(frontLight, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
 
-        closeButton = iconButton("x", 36)
-        root.addView(closeButton, topStartParams())
+        previewOverlay = FrameLayout(this)
+        root.addView(previewOverlay, FrameLayout.LayoutParams(previewWidth, previewHeight, Gravity.CENTER))
+
+        closeButton = imageButton(R.drawable.spielbergo_close)
+        previewOverlay.addView(closeButton, topStartParams())
         closeButton.setOnClickListener { confirmExit() }
 
-        switchButton = iconButton("⇄", 24)
-        flashButton = iconButton("ϟ", 28)
-        root.addView(switchButton, topEndParams(0))
-        root.addView(flashButton, topEndParams(52))
+        switchButton = imageButton(R.drawable.spielbergo_switch_camera)
+        flashButton = imageButton(R.drawable.spielbergo_no_flash)
+        previewOverlay.addView(switchButton, topEndParams(0))
+        previewOverlay.addView(flashButton, topEndParams(52))
         switchButton.setOnClickListener { switchCamera() }
         flashButton.setOnClickListener { toggleLight() }
 
@@ -174,11 +186,11 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
             it.orientation = LinearLayout.HORIZONTAL
         }
         durations.forEachIndexed { index, label ->
-            durationRow.addView(durationOption(label, index == 0))
+            durationRow.addView(durationOption(label, label == selectedRecordTime || (index == 0 && selectedRecordTime.isBlank())))
         }
         root.addView(durationRow, bottomCenterParams(dp(96), ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
 
-        recordButton = RecordButton(this)
+        recordButton = RecordButton(this).also { it.setBackgroundColor(Color.TRANSPARENT) }
         root.addView(recordButton, bottomCenterParams(dp(74), dp(74), dp(32)))
         recordButton.setOnClickListener {
             if (activeRecording == null) startRecording() else stopRecording()
@@ -187,15 +199,15 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         countdownText = label("00:00", 16).also { it.visibility = View.GONE }
         root.addView(countdownText, bottomOffsetParams(dp(38), dp(78)))
 
-        deleteButton = iconButton("⌫", 24).also { it.visibility = View.GONE }
-        doneButton = iconButton("✓", 28).also { it.visibility = View.GONE }
+        deleteButton = imageButton(R.drawable.spielbergo_delete_clip).also { it.visibility = View.GONE }
+        doneButton = imageButton(R.drawable.spielbergo_checkmark_circle).also { it.visibility = View.GONE }
         root.addView(deleteButton, bottomOffsetParams(dp(42), -dp(54)))
         root.addView(doneButton, bottomOffsetParams(dp(42), -dp(108)))
         deleteButton.setOnClickListener { confirmDeleteLastClip() }
         doneButton.setOnClickListener { showEditor() }
 
-        backButton = iconButton("‹", 44).also { it.visibility = View.GONE }
-        root.addView(backButton, topStartParams())
+        backButton = imageButton(R.drawable.spielbergo_chevron_left).also { it.visibility = View.GONE }
+        previewOverlay.addView(backButton, topStartParams())
         backButton.setOnClickListener { showRecorder() }
 
         nextButton = TextView(this).also {
@@ -218,15 +230,24 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     private fun durationOption(label: String, selected: Boolean): TextView =
         label(label, 14).also { view ->
             view.typeface = android.graphics.Typeface.DEFAULT_BOLD
-            view.alpha = if (selected) 1f else 0.8f
-            view.setPadding(dp(12), 0, dp(12), 0)
+            view.gravity = Gravity.CENTER
+            view.setPadding(dp(12), dp(4), dp(12), dp(4))
+            styleDurationOption(view, selected)
             view.setOnClickListener {
                 maxDurationMs = parseDurationMs(label)
-                for (i in 0 until durationRow.childCount) durationRow.getChildAt(i).alpha = 0.8f
-                view.alpha = 1f
+                for (i in 0 until durationRow.childCount) {
+                    styleDurationOption(durationRow.getChildAt(i) as TextView, false)
+                }
+                styleDurationOption(view, true)
                 updateCountdown(remainingMs())
             }
         }
+
+    private fun styleDurationOption(view: TextView, selected: Boolean) {
+        view.setTextColor(if (selected) Color.BLACK else Color.WHITE)
+        view.alpha = 1f
+        view.background = if (selected) roundedBackground(Color.WHITE, dp(10).toFloat()) else null
+    }
 
     private fun bindCamera() {
         val providerFuture = ProcessCameraProvider.getInstance(this)
@@ -311,6 +332,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
             else CameraSelector.LENS_FACING_FRONT
         frontLightEnabled = false
         frontLight.visibility = View.GONE
+        flashButton.setImageResource(R.drawable.spielbergo_no_flash)
         bindCamera()
     }
 
@@ -321,11 +343,15 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         } else {
             frontLightEnabled = !frontLightEnabled
             frontLight.visibility = if (frontLightEnabled) View.VISIBLE else View.GONE
+            flashButton.setImageResource(
+                if (frontLightEnabled) R.drawable.spielbergo_flash else R.drawable.spielbergo_no_flash
+            )
         }
     }
 
     private fun applyBackTorch(enable: Boolean) {
         camera?.cameraControl?.enableTorch(enable)
+        flashButton.setImageResource(if (enable) R.drawable.spielbergo_flash else R.drawable.spielbergo_no_flash)
     }
 
     private fun showEditor() {
@@ -458,11 +484,14 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         return if (trimmed.endsWith("m")) amount * 60_000L else amount * 1_000L
     }
 
-    private fun iconButton(text: String, size: Int): TextView =
-        label(text, size).also {
-            it.gravity = Gravity.CENTER
-            it.typeface = android.graphics.Typeface.DEFAULT_BOLD
-            it.setShadowLayer(4f, 0f, 1f, Color.argb(120, 0, 0, 0))
+    private fun imageButton(drawableRes: Int): ImageButton =
+        ImageButton(this).also {
+            it.setImageResource(drawableRes)
+            it.background = null
+            it.setBackgroundColor(Color.TRANSPARENT)
+            it.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            it.adjustViewBounds = true
+            it.setPadding(dp(8), dp(8), dp(8), dp(8))
         }
 
     private fun label(text: String, size: Int): TextView =
@@ -474,14 +503,14 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
 
     private fun topStartParams(): FrameLayout.LayoutParams =
         FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.START).also {
-            it.topMargin = dp(54)
-            it.leftMargin = dp(18)
+            it.topMargin = dp(18)
+            it.leftMargin = dp(12)
         }
 
     private fun topEndParams(offset: Int): FrameLayout.LayoutParams =
         FrameLayout.LayoutParams(dp(44), dp(44), Gravity.TOP or Gravity.END).also {
-            it.topMargin = dp(58 + offset)
-            it.rightMargin = dp(22)
+            it.topMargin = dp(18 + offset)
+            it.rightMargin = dp(12)
         }
 
     private fun bottomCenterParams(width: Int, height: Int, bottom: Int): FrameLayout.LayoutParams =

@@ -63,6 +63,9 @@ class SpielbergoPlugin :
             SpielbergoVideoEditorActivity.extraRecordTimes,
             ArrayList(recordTimes)
         )
+        call.argument<String>("defaultRecordTime")?.let {
+            intent.putExtra(SpielbergoVideoEditorActivity.extraDefaultRecordTime, it)
+        }
         pendingResult = result
         currentActivity.startActivityForResult(intent, requestPickVideo)
     }

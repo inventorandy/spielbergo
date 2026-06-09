@@ -14,6 +14,7 @@ A new Flutter plugin project.
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
   s.source_files = 'spielbergo/Sources/spielbergo/**/*'
+  s.resources = 'spielbergo/Sources/spielbergo/Resources/*'
   s.dependency 'Flutter'
   s.platform = :ios, '13.0'
 

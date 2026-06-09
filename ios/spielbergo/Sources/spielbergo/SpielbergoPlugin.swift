@@ -33,9 +33,13 @@ public class SpielbergoPlugin: NSObject, FlutterPlugin {
 
     let arguments = call.arguments as? [String: Any]
     let recordTimes = arguments?["recordTimes"] as? [String] ?? []
+    let defaultRecordTime = arguments?["defaultRecordTime"] as? String
     pendingResult = result
 
-    let editor = SpielbergoVideoEditorViewController(recordTimes: recordTimes)
+    let editor = SpielbergoVideoEditorViewController(
+      recordTimes: recordTimes,
+      defaultRecordTime: defaultRecordTime
+    )
     editor.modalPresentationStyle = .fullScreen
     editor.onComplete = { [weak self] path in
       self?.pendingResult?(path)

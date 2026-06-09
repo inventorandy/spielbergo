@@ -9,9 +9,13 @@ class Spielbergo {
 }
 
 class SpielbergoVideoEditor {
-  Future<File?> pickVideo({required List<String> recordTimes}) async {
+  Future<File?> pickVideo({
+    required List<String> recordTimes,
+    String? defaultRecordTime,
+  }) async {
     final path = await SpielbergoPlatform.instance.pickVideo(
       recordTimes: recordTimes,
+      defaultRecordTime: defaultRecordTime,
     );
 
     return path == null ? null : File(path);

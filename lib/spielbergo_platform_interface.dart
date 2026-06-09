@@ -27,7 +27,10 @@ abstract class SpielbergoPlatform extends PlatformInterface {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 
-  Future<String?> pickVideo({required List<String> recordTimes}) {
+  Future<String?> pickVideo({
+    required List<String> recordTimes,
+    String? defaultRecordTime,
+  }) {
     throw UnimplementedError('pickVideo() has not been implemented.');
   }
 }

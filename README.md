@@ -8,6 +8,7 @@ iOS and Android.
 ```dart
 final videoFile = await SpielbergoVideoEditor().pickVideo(
   recordTimes: ['10m', '1m', '30s', '15s'],
+  defaultRecordTime: '1m',
 );
 ```
 
