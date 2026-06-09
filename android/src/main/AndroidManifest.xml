@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.example.spielbergo">
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+  <uses-feature android:name="android.hardware.camera" android:required="true" />
+
+  <application>
+    <activity
+      android:name=".SpielbergoVideoEditorActivity"
+      android:configChanges="keyboardHidden|orientation|screenSize"
+      android:exported="false"
+      android:screenOrientation="portrait"
+      android:theme="@style/SpielbergoVideoEditorTheme" />
+  </application>
+</manifest>
