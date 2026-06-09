@@ -190,7 +190,12 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         }
         root.addView(durationRow, bottomCenterParams(dp(96), ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
 
-        recordButton = RecordButton(this).also { it.setBackgroundColor(Color.TRANSPARENT) }
+        recordButton = RecordButton(this).also {
+            it.background = null
+            it.setBackgroundColor(Color.TRANSPARENT)
+            it.stateListAnimator = null
+            it.setWillNotDraw(false)
+        }
         root.addView(recordButton, bottomCenterParams(dp(74), dp(74), dp(32)))
         recordButton.setOnClickListener {
             if (activeRecording == null) startRecording() else stopRecording()
@@ -201,8 +206,8 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
 
         deleteButton = imageButton(R.drawable.spielbergo_delete_clip).also { it.visibility = View.GONE }
         doneButton = imageButton(R.drawable.spielbergo_checkmark_circle).also { it.visibility = View.GONE }
-        root.addView(deleteButton, bottomOffsetParams(dp(42), -dp(54)))
-        root.addView(doneButton, bottomOffsetParams(dp(42), -dp(108)))
+        root.addView(deleteButton, bottomOffsetParams(dp(42), -dp(38), dp(44)))
+        root.addView(doneButton, bottomOffsetParams(dp(38), -dp(84), dp(58)))
         deleteButton.setOnClickListener { confirmDeleteLastClip() }
         doneButton.setOnClickListener { showEditor() }
 
@@ -502,7 +507,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         }
 
     private fun topStartParams(): FrameLayout.LayoutParams =
-        FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.START).also {
+        FrameLayout.LayoutParams(dp(44), dp(44), Gravity.TOP or Gravity.START).also {
             it.topMargin = dp(18)
             it.leftMargin = dp(12)
         }
@@ -518,8 +523,8 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
             it.bottomMargin = bottom
         }
 
-    private fun bottomOffsetParams(bottom: Int, rightOffset: Int): FrameLayout.LayoutParams =
-        FrameLayout.LayoutParams(dp(48), dp(48), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).also {
+    private fun bottomOffsetParams(bottom: Int, rightOffset: Int, size: Int = dp(48)): FrameLayout.LayoutParams =
+        FrameLayout.LayoutParams(size, size, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).also {
             it.bottomMargin = bottom
             it.marginStart = rightOffset
         }
@@ -544,6 +549,12 @@ private class RecordButton(context: android.content.Context) : View(context) {
     enum class Mode { EMPTY, READY, STOP }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    init {
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+        setBackgroundColor(Color.TRANSPARENT)
+        background = null
+    }
     var mode = Mode.EMPTY
         set(value) {
             field = value
@@ -556,6 +567,7 @@ private class RecordButton(context: android.content.Context) : View(context) {
         }
 
     override fun onDraw(canvas: Canvas) {
+        canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
         super.onDraw(canvas)
         val size = min(width, height).toFloat()
         val center = size / 2f

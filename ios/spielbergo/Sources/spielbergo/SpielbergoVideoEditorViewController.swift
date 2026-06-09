@@ -130,6 +130,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     view.addSubview(durationStack)
 
     recordButton.translatesAutoresizingMaskIntoConstraints = false
+    recordButton.backgroundColor = .clear
+    recordButton.isOpaque = false
     recordButton.addTarget(self, action: #selector(toggleRecording), for: .touchUpInside)
     view.addSubview(recordButton)
 
@@ -169,8 +171,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
 
       closeButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
       closeButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
-      closeButton.widthAnchor.constraint(equalToConstant: 48),
-      closeButton.heightAnchor.constraint(equalToConstant: 48),
+      closeButton.widthAnchor.constraint(equalToConstant: 44),
+      closeButton.heightAnchor.constraint(equalToConstant: 44),
 
       switchButton.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -12),
       switchButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
@@ -193,20 +195,20 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       countdownLabel.leadingAnchor.constraint(equalTo: recordButton.trailingAnchor, constant: 18),
       countdownLabel.centerYAnchor.constraint(equalTo: recordButton.centerYAnchor),
 
-      deleteButton.leadingAnchor.constraint(equalTo: recordButton.trailingAnchor, constant: 42),
+      deleteButton.leadingAnchor.constraint(equalTo: recordButton.trailingAnchor, constant: 22),
       deleteButton.centerYAnchor.constraint(equalTo: recordButton.centerYAnchor),
-      deleteButton.widthAnchor.constraint(equalToConstant: 48),
-      deleteButton.heightAnchor.constraint(equalToConstant: 48),
+      deleteButton.widthAnchor.constraint(equalToConstant: 44),
+      deleteButton.heightAnchor.constraint(equalToConstant: 44),
 
-      doneButton.leadingAnchor.constraint(equalTo: deleteButton.trailingAnchor, constant: 14),
+      doneButton.leadingAnchor.constraint(equalTo: deleteButton.trailingAnchor, constant: 6),
       doneButton.centerYAnchor.constraint(equalTo: recordButton.centerYAnchor),
-      doneButton.widthAnchor.constraint(equalToConstant: 48),
-      doneButton.heightAnchor.constraint(equalToConstant: 48),
+      doneButton.widthAnchor.constraint(equalToConstant: 58),
+      doneButton.heightAnchor.constraint(equalToConstant: 58),
 
       backButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
       backButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
-      backButton.widthAnchor.constraint(equalToConstant: 48),
-      backButton.heightAnchor.constraint(equalToConstant: 48),
+      backButton.widthAnchor.constraint(equalToConstant: 44),
+      backButton.heightAnchor.constraint(equalToConstant: 44),
 
       nextButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor),
       nextButton.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor),
@@ -591,6 +593,18 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
 private final class RecordButton: UIControl {
   enum Mode { case empty, ready, stop }
 
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    backgroundColor = .clear
+    isOpaque = false
+  }
+
+  required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    backgroundColor = .clear
+    isOpaque = false
+  }
+
   var mode: Mode = .empty {
     didSet { setNeedsDisplay() }
   }
@@ -600,6 +614,7 @@ private final class RecordButton: UIControl {
 
   override func draw(_ rect: CGRect) {
     guard let context = UIGraphicsGetCurrentContext() else { return }
+    context.clear(rect)
     let size = min(rect.width, rect.height)
     let center = CGPoint(x: rect.midX, y: rect.midY)
     context.setFillColor(UIColor.white.cgColor)
