@@ -507,7 +507,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         }
 
     private fun topStartParams(): FrameLayout.LayoutParams =
-        FrameLayout.LayoutParams(dp(44), dp(44), Gravity.TOP or Gravity.START).also {
+        FrameLayout.LayoutParams(dp(40), dp(40), Gravity.TOP or Gravity.START).also {
             it.topMargin = dp(18)
             it.leftMargin = dp(12)
         }
