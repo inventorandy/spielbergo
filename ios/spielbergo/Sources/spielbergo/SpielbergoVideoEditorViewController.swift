@@ -171,8 +171,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
 
       closeButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
       closeButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
-      closeButton.widthAnchor.constraint(equalToConstant: 44),
-      closeButton.heightAnchor.constraint(equalToConstant: 44),
+      closeButton.widthAnchor.constraint(equalToConstant: 40),
+      closeButton.heightAnchor.constraint(equalToConstant: 40),
 
       switchButton.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -12),
       switchButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
@@ -207,8 +207,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
 
       backButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 12),
       backButton.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 18),
-      backButton.widthAnchor.constraint(equalToConstant: 44),
-      backButton.heightAnchor.constraint(equalToConstant: 44),
+      backButton.widthAnchor.constraint(equalToConstant: 40),
+      backButton.heightAnchor.constraint(equalToConstant: 40),
 
       nextButton.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor),
       nextButton.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor),
