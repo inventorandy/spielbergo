@@ -67,7 +67,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       previewLayer?.connection?.videoOrientation = .portrait
     }
     previewPlayerLayer()?.frame = playerView.bounds
-    if hasCapturePermissions && shouldStartSessionWhenReady && !session.isRunning {
+    if hasCapturePermissions && shouldStartSessionWhenReady && !isConfiguringSession && !session.isRunning {
       scheduleSessionStart()
     }
   }
@@ -249,10 +249,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
 
   private func scheduleSessionStart() {
     shouldStartSessionWhenReady = true
-    guard view.window != nil else { return }
-
-    view.setNeedsLayout()
-    view.layoutIfNeeded()
+    guard view.window != nil, !isConfiguringSession, !session.isRunning else { return }
 
     guard previewContainer.bounds.width > 0, previewContainer.bounds.height > 0 else {
       DispatchQueue.main.async { [weak self] in
