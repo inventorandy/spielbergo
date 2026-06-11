@@ -247,9 +247,13 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     }
   }
 
-  private func scheduleSessionStart() {
+  private func scheduleSessionStart(reconfigureRunningSession: Bool = false) {
     shouldStartSessionWhenReady = true
-    guard view.window != nil, !isConfiguringSession, !session.isRunning else { return }
+    guard view.window != nil, !isConfiguringSession else { return }
+    guard reconfigureRunningSession || !session.isRunning else {
+      shouldStartSessionWhenReady = false
+      return
+    }
 
     guard previewContainer.bounds.width > 0, previewContainer.bounds.height > 0 else {
       DispatchQueue.main.async { [weak self] in
@@ -393,7 +397,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     currentCameraPosition = currentCameraPosition == .front ? .back : .front
     frontLightView.isHidden = true
     setFlashIcon(enabled: false)
-    scheduleSessionStart()
+    scheduleSessionStart(reconfigureRunningSession: true)
   }
 
   @objc private func toggleLight() {
