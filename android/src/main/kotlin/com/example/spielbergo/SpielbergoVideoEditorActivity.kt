@@ -18,6 +18,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -70,6 +71,8 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     private var activeClipDurationMs = 0L
     private var maxDurationMs = 15_000L
     private var frontLightEnabled = false
+    private var isBindingCamera = false
+    private var shouldBindCameraOnResume = false
     private lateinit var root: FrameLayout
     private lateinit var previewOverlay: FrameLayout
     private lateinit var previewView: PreviewView
@@ -100,7 +103,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         maxDurationMs = parseDurationMs(selectedRecordTime)
         buildUi(availableDurations, selectedRecordTime)
         if (hasPermissions()) {
-            previewView.post { bindCamera() }
+            scheduleCameraBind()
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -117,6 +120,13 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (hasPermissions() && shouldBindCameraOnResume) {
+            scheduleCameraBind()
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -124,7 +134,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == permissionRequestCode && hasPermissions()) {
-            previewView.post { bindCamera() }
+            scheduleCameraBind()
         } else {
             finishCancelled()
         }
@@ -147,6 +157,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         val previewWidth = (previewHeight * 9f / 16f).toInt()
 
         previewView = PreviewView(this).also {
+            it.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             it.scaleType = PreviewView.ScaleType.FILL_CENTER
             it.clipToOutline = true
             it.outlineProvider = roundedOutline(dp(14).toFloat())
@@ -254,26 +265,56 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         view.background = if (selected) roundedBackground(Color.WHITE, dp(10).toFloat()) else null
     }
 
+    private fun scheduleCameraBind() {
+        shouldBindCameraOnResume = true
+        if (!previewView.isAttachedToWindow || previewView.width == 0 || previewView.height == 0) {
+            previewView.viewTreeObserver.addOnPreDrawListener(
+                object : ViewTreeObserver.OnPreDrawListener {
+                    override fun onPreDraw(): Boolean {
+                        if (!previewView.viewTreeObserver.isAlive) return true
+                        if (previewView.isAttachedToWindow && previewView.width > 0 && previewView.height > 0) {
+                            previewView.viewTreeObserver.removeOnPreDrawListener(this)
+                            previewView.post { bindCamera() }
+                        }
+                        return true
+                    }
+                }
+            )
+            return
+        }
+
+        previewView.post { bindCamera() }
+    }
+
     private fun bindCamera() {
+        if (isBindingCamera || !previewView.isAttachedToWindow || previewView.width == 0 || previewView.height == 0) {
+            return
+        }
+        isBindingCamera = true
         val providerFuture = ProcessCameraProvider.getInstance(this)
         providerFuture.addListener({
-            val provider = providerFuture.get()
-            val selector = CameraSelector.Builder().requireLensFacing(selectedLensFacing).build()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-            val recorder = Recorder.Builder()
-                .setQualitySelector(
-                    QualitySelector.from(
-                        Quality.HD,
-                        FallbackStrategy.higherQualityOrLowerThan(Quality.HD)
+            try {
+                val provider = providerFuture.get()
+                val selector = CameraSelector.Builder().requireLensFacing(selectedLensFacing).build()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+                val recorder = Recorder.Builder()
+                    .setQualitySelector(
+                        QualitySelector.from(
+                            Quality.HD,
+                            FallbackStrategy.higherQualityOrLowerThan(Quality.HD)
+                        )
                     )
-                )
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
-            provider.unbindAll()
-            camera = provider.bindToLifecycle(this, selector, preview, videoCapture)
-            applyBackTorch(false)
+                    .build()
+                videoCapture = VideoCapture.withOutput(recorder)
+                provider.unbindAll()
+                camera = provider.bindToLifecycle(this, selector, preview, videoCapture)
+                shouldBindCameraOnResume = false
+                applyBackTorch(false)
+            } finally {
+                isBindingCamera = false
+            }
         }, ContextCompat.getMainExecutor(this))
     }
 
@@ -338,7 +379,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         frontLightEnabled = false
         frontLight.visibility = View.GONE
         flashButton.setImageResource(R.drawable.spielbergo_no_flash)
-        bindCamera()
+        scheduleCameraBind()
     }
 
     private fun toggleLight() {

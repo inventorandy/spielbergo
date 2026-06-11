@@ -21,6 +21,9 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
   private var timer: Timer?
   private var previewPlayer: AVQueuePlayer?
   private var previewLooper: AVPlayerLooper?
+  private var hasCapturePermissions = false
+  private var isConfiguringSession = false
+  private var shouldStartSessionWhenReady = false
 
   private let previewContainer = UIView()
   private let closeButton = UIButton(type: .system)
@@ -64,6 +67,16 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       previewLayer?.connection?.videoOrientation = .portrait
     }
     previewPlayerLayer()?.frame = playerView.bounds
+    if hasCapturePermissions && shouldStartSessionWhenReady && !session.isRunning {
+      scheduleSessionStart()
+    }
+  }
+
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    if hasCapturePermissions {
+      scheduleSessionStart()
+    }
   }
 
   override func viewDidDisappear(_ animated: Bool) {
@@ -224,7 +237,8 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       AVCaptureDevice.requestAccess(for: .audio) { audioAllowed in
         DispatchQueue.main.async {
           if videoAllowed && audioAllowed {
-            self.configureSession()
+            self.hasCapturePermissions = true
+            self.scheduleSessionStart()
           } else {
             self.finishCancelled()
           }
@@ -233,7 +247,28 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     }
   }
 
+  private func scheduleSessionStart() {
+    shouldStartSessionWhenReady = true
+    guard view.window != nil else { return }
+
+    view.setNeedsLayout()
+    view.layoutIfNeeded()
+
+    guard previewContainer.bounds.width > 0, previewContainer.bounds.height > 0 else {
+      DispatchQueue.main.async { [weak self] in
+        self?.scheduleSessionStart()
+      }
+      return
+    }
+
+    configureSession()
+  }
+
   private func configureSession() {
+    guard !isConfiguringSession else { return }
+    guard previewContainer.bounds.width > 0, previewContainer.bounds.height > 0 else { return }
+    isConfiguringSession = true
+
     session.beginConfiguration()
     session.sessionPreset = .high
     session.inputs.forEach { session.removeInput($0) }
@@ -247,6 +282,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
       session.canAddInput(audioInput)
     else {
       session.commitConfiguration()
+      isConfiguringSession = false
       return
     }
 
@@ -263,12 +299,19 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     if previewLayer == nil {
       let layer = AVCaptureVideoPreviewLayer(session: session)
       layer.videoGravity = .resizeAspectFill
+      layer.frame = previewContainer.bounds
       previewContainer.layer.insertSublayer(layer, at: 0)
       previewLayer = layer
     }
 
     DispatchQueue.global(qos: .userInitiated).async {
-      self.session.startRunning()
+      if !self.session.isRunning {
+        self.session.startRunning()
+      }
+      DispatchQueue.main.async {
+        self.shouldStartSessionWhenReady = false
+        self.isConfiguringSession = false
+      }
     }
   }
 
@@ -353,7 +396,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     currentCameraPosition = currentCameraPosition == .front ? .back : .front
     frontLightView.isHidden = true
     setFlashIcon(enabled: false)
-    configureSession()
+    scheduleSessionStart()
   }
 
   @objc private func toggleLight() {
