@@ -461,6 +461,11 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
     }
 
     private fun confirmExit() {
+        if (clipFiles.isEmpty()) {
+            finishCancelled()
+            return
+        }
+
         AlertDialog.Builder(this)
             .setTitle("Discard video?")
             .setMessage("This will delete your recorded clips.")
@@ -508,7 +513,7 @@ class SpielbergoVideoEditorActivity : AppCompatActivity() {
         closeButton.visibility = View.VISIBLE
         switchButton.visibility = View.VISIBLE
         flashButton.visibility = View.VISIBLE
-        durationRow.visibility = View.VISIBLE
+        durationRow.visibility = if (clipFiles.isEmpty()) View.VISIBLE else View.GONE
         countdownText.visibility = View.GONE
         recordButton.visibility = View.VISIBLE
         recordButton.mode = if (clipFiles.isEmpty()) RecordButton.Mode.EMPTY else RecordButton.Mode.READY

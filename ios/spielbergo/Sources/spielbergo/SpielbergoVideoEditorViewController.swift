@@ -536,6 +536,11 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
   }
 
   @objc private func confirmExit() {
+    guard !clipUrls.isEmpty else {
+      finishCancelled()
+      return
+    }
+
     let alert = UIAlertController(title: "Discard video?", message: "This will delete your recorded clips.", preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
     alert.addAction(UIAlertAction(title: "Discard", style: .destructive) { [weak self] _ in
@@ -585,7 +590,7 @@ final class SpielbergoVideoEditorViewController: UIViewController, AVCaptureFile
     closeButton.isHidden = false
     switchButton.isHidden = false
     flashButton.isHidden = false
-    durationStack.isHidden = false
+    durationStack.isHidden = !clipUrls.isEmpty
     recordButton.isHidden = false
     countdownLabel.isHidden = true
     backButton.isHidden = true
